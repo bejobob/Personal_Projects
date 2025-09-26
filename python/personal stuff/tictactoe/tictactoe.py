@@ -8,6 +8,10 @@ A robot that will play tictactoe against you, and hopefully never lose.
 v.0.0(02/16/24)
 v.0.1(02/17/24) I finished the 'check_for_win' function
 v.1.0(03/10/24) The bot is functional, and can detect wins. It still needs to look for its own potential wins and pursue them.
+
+TODO:
+    - Fix win detection??
+    - Generally improve stuff
 """
 
 from random import randint
@@ -34,14 +38,8 @@ while win == False:
         except ValueError:
             print("Please select a number from 1 to 9!")
         break
-
-    if selected_square < 4:
-        board[0][selected_square-1] = player_shape
-    elif selected_square > 3 and selected_square < 7:
-        board[1][selected_square-4] = player_shape
-    else:
-        board[2][selected_square-7] = player_shape
-
+    
+    board[(selected_square-1)//3][selected_square%3-1] = player_shape
     win, danger[0], danger[1] = check_for_win_or_potential(robots_shape)
     
     if win:
