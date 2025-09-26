@@ -22,9 +22,10 @@ import java.util.ArrayList;
     -ingame restart button -DONE
     -freeze grid when you press on a mine but still allow player to use restart button
     -chords?
-    -get rid of middleclick when testing is over -DONE
+    -get rid of middle-click when testing is over -DONE
     -increase refresh speed -DONE (only conserned cells are repainted)
     -can't press on a mine after using reset button -DONE
+    - figure out how to set up github and such
 */
 public class MineSweeper extends Frame implements MouseListener {
     
