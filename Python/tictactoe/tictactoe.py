@@ -12,7 +12,7 @@ v.1.1(09/25/25) Improved the part where the square gets updated with the user's 
 v.1.2(09/25/25) Moved the board variable to tictactoe.py to avoid circular imports and the player can't play in filled squares any more.
 TODO:
     - Fix win detection??
-    - Generally improve stuff do I need to do this every time?
+    - Generally improve stuff
     - Why does the program remember the board after exiting?
 """
 
