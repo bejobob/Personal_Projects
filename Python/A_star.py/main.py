@@ -8,8 +8,13 @@ v 1.0 (december 16th, 2025): it finaly works! Or maybe? I think I might need to 
 v 1.1 (december 16th, 2025): I flipped the coordinates and yes! it actually works
 v 1.2 (december 16th, 2025): When the program finishes finding a path it draws the maze and highlights the path for a visual of the solution
 v 1.3 (december 16th, 2025): now it shows you the open nodes in the maze as it solves it. Shows you how it works. Cool stuff.
+v 1.4 (december 20th, 2025): began implementation of a hash table to store coordinate-to-node relations to fix my incredibly high runtime. It's actually insane how long it takes
 """
-
+"""
+TODO: fix x-y flip. This is caused by how 2d lists work. Just make it consistent and clear throughout the entire program
+         finish setting up the hash table. It will be a list of dicts. Each dict will have an index found using the hash value of the coordinates
+         then we can use the coordinates themselves to identify the node in question.
+"""
 from total_distance import total_cost
 from distance_left import distance_left
 import matplotlib.pyplot as plt
@@ -22,6 +27,11 @@ nodes_in_path = []
 xf = None
 yf = None
 
+coord_to_node = []
+
+def hash_value(coords):
+    return int(str(coords[0]) + str(coords[1]))%512
+
 def load_map(path): # this function takes a file path and turns a .map into a usable 2d list
     with open(path) as f:
         lines = f.read().splitlines()
@@ -31,11 +41,19 @@ def load_map(path): # this function takes a file path and turns a .map into a us
     return grid
 
 class Node(): # node structure
-    def __init__(self, x, y, value, parent=None):
+    def __init__(self, x, y, cost_spent, cost_left, parent=None):
         self.x = x # the x coord
         self.y = y # the y coord
-        self.value = value # the value/efficiency of the node relative to the target node
+        self.cost_spent = cost_spent
+        self.cost_left = cost_left
+        self.value = cost_spent + cost_left
         self.parent = parent # the node we came from to get here
+
+class Entry():
+    def __init__(self, coords, node, nxt=None):
+        self.coords = coords
+        self.node = node
+        self.nxt = nxt
 
 DIRS = [(-1, -1), # left and down
         (-1, 0), # left
@@ -58,12 +76,13 @@ while(True):
 ######################## DRAWING STUFF ####################################################
 plt.ion()
 
-img = [[1 if c == '@' else 0 for c in row] for row in grid]
+img = [[0 if c == '@' else 1 for c in row] for row in grid]
 fig, ax = plt.subplots()
 ax.imshow(img, cmap="gray")
 ax.axis("off")
 
 open_scatter = ax.plot([], [], 'bo', markersize=1)[0]    # open set
+best_dot = ax.plot([], [], 'ro', markersize = 1)[0]
 closed_scatter = ax.plot([], [], 'ro', markersize=1)[0]  # closed set
 ###########################################################################################
 ######################## GET STARTING AND TARGET POINTS ###################################
@@ -97,15 +116,16 @@ while(True):
         print(e)
 ###########################################################################################
 ######################## INITIALIZNG STARTING STUFFS ######################################
-current_node = Node(x, y, distance_left(x, y, xf, yf))
+current_node = Node(x, y, 0, distance_left(x, y, xf, yf))
 closed_nodes.append(current_node)
 nodes_in_path.append(current_node)
+coord_to_node[hash_value((x, y))] = Entry((x, y), current_node)
 ###########################################################################################
 
 def node_value(x, y, parent): # this function identifies the value of a node given the coordinates and the parent
     cost_spent = total_cost(parent, x, y) # i use this function when creating a node, so I can't pass the node itself as the parameter
     cost_left = distance_left(x, y, xf, yf) # which is why I have to use x, y, and parent instead of just node
-    return cost_spent+cost_left
+    return (cost_spent, cost_left)
 
 ######################## MAIN FUNCTION ####################################################
 def astar(current_node, xf, yf):
@@ -114,7 +134,8 @@ def astar(current_node, xf, yf):
     while (True):
         for dx, dy in DIRS:
             nx, ny = current_node.x + dx, current_node.y + dy
-######################### MAKE SURE THE NEW COORDINATES ARE VALID #########################
+            new_node = Node(nx, ny, *node_value(nx, ny, current_node), current_node)
+######################### MAKE SURE THE NEW NODE IS VALID #########################
             if (nx > len(grid)-1 or ny > len(grid[0])-1):
                 continue
             elif (grid[nx][ny] == '@'):
@@ -126,9 +147,9 @@ def astar(current_node, xf, yf):
                     continue
 ###########################################################################################
 ######################### CREATE NEW NODE #################################################
-            new_node = Node(nx, ny, node_value(nx, ny, current_node), current_node)
             open_nodes.append(new_node)
             open_coords.add((nx, ny))
+            #print(new_node.value)
 ###########################################################################################
 ######################## IDENTIFY BEST OPEN NODE ##########################################
         best = open_nodes[0]
@@ -144,17 +165,21 @@ def astar(current_node, xf, yf):
         open_coords.remove((best.x, best.y))
         closed_coords.add((best.y, best.x))
 ######################## DRAWING THE CURRENT STATE OF THINGS ##############################
+        """
         open_xs = [n.y for n in open_nodes]
         open_ys = [n.x for n in open_nodes]
-
+        best_xs = [best.y]
+        best_ys = [best.x]
         closed_xs = [n.y for n in closed_nodes]
         closed_ys = [n.x for n in closed_nodes]
 
         open_scatter.set_data(open_xs, open_ys)
+        best_dot.set_data(best_xs, best_ys)
         closed_scatter.set_data(closed_xs, closed_ys)
         steps += 1
-        if steps % 300 == 0:
-            plt.pause(0.001)
+        if steps % 500 == 0:
+            plt.pause(0.05)
+        """
 ###########################################################################################
 ######################## SET NEW CURRENT ##################################################
         current_node = best
