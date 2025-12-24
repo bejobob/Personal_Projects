@@ -251,8 +251,7 @@ public class MineSweeper extends Frame implements MouseListener {
                                             }
                                         }
                                     }
-                                } catch (IndexOutOfBoundsException er) {
-                                    
+                                } catch (IndexOutOfBoundsException er) {     
                                 }
                             }
                         }
