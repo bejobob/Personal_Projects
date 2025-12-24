@@ -9,6 +9,7 @@ v 1.1 (december 16th, 2025): I flipped the coordinates and yes! it actually work
 v 1.2 (december 16th, 2025): When the program finishes finding a path it draws the maze and highlights the path for a visual of the solution
 v 1.3 (december 16th, 2025): now it shows you the open nodes in the maze as it solves it. Shows you how it works. Cool stuff.
 v 1.4 (december 20th, 2025): began implementation of a hash table to store coordinate-to-node relations to fix my incredibly high runtime. It's actually insane how long it takes
+v 1.5 (december 24th, 2025): many little improvement in run time
 """
 """
 TODO: fix x-y flip. This is caused by how 2d lists work. Just make it consistent and clear throughout the entire program
@@ -18,16 +19,16 @@ TODO: fix x-y flip. This is caused by how 2d lists work. Just make it consistent
 from total_distance import total_cost
 from distance_left import distance_left
 import matplotlib.pyplot as plt
+import numpy as np
 
 open_nodes = []
 closed_nodes = []
 open_coords = set()
 closed_coords = set()
-nodes_in_path = []
 xf = None
 yf = None
 
-coord_to_node = []
+coord_to_node = {} # we need the list to have all its indeces available right at the start
 
 def hash_value(coords):
     return int(str(coords[0]) + str(coords[1]))%512
@@ -38,6 +39,7 @@ def load_map(path): # this function takes a file path and turns a .map into a us
 
     i = lines.index("map") + 1
     grid = lines[i:]
+
     return grid
 
 class Node(): # node structure
@@ -96,7 +98,7 @@ while(True):
         if (0 > y > len(grid)):
             print("y out of bounds")
             continue
-        if (grid[x][y] == '@'):
+        if (grid[y][x] == '@'):
             print("Sorry, xy coordinate is a wall and we can't start there")
             continue
 
@@ -108,7 +110,7 @@ while(True):
         if (0 > yf > len(grid)):
             print("y out of bounds")
             continue
-        if (grid[xf][yf] == '@'):
+        if (grid[yf][xf] == '@'):
             print("Sorry, xy coordinate is a wall and we can't start there")
             continue
         break
@@ -118,8 +120,7 @@ while(True):
 ######################## INITIALIZNG STARTING STUFFS ######################################
 current_node = Node(x, y, 0, distance_left(x, y, xf, yf))
 closed_nodes.append(current_node)
-nodes_in_path.append(current_node)
-coord_to_node[hash_value((x, y))] = Entry((x, y), current_node)
+coord_to_node[(x, y)] = current_node
 ###########################################################################################
 
 def node_value(x, y, parent): # this function identifies the value of a node given the coordinates and the parent
@@ -140,15 +141,17 @@ def astar(current_node, xf, yf):
                 continue
             elif (grid[nx][ny] == '@'):
                 continue
-            elif ((ny, nx) in closed_coords or (nx, ny) in open_coords):
+            elif ((nx, ny) in closed_coords or (nx, ny) in open_coords):
                 continue
             elif (dx != 0 and dy != 0):
-                if grid[y][x + dx] == '@' or grid[y + dy][x] == '@':
+                if grid[x][y + dy] == '@' or grid[x + dx][y] == '@':
                     continue
 ###########################################################################################
 ######################### CREATE NEW NODE #################################################
             open_nodes.append(new_node)
             open_coords.add((nx, ny))
+            if (new_node.value < coord_to_node[(x, y)].value):
+                coord_to_node[(x, y)] = new_node
             #print(new_node.value)
 ###########################################################################################
 ######################## IDENTIFY BEST OPEN NODE ##########################################
@@ -156,17 +159,20 @@ def astar(current_node, xf, yf):
         for node in open_nodes:
             if (node.value < best.value):
                 best = node
+        open_nodes.remove(best)
 ###########################################################################################
 ######################## REMOVE NODE FROM OPEN LISTS ######################################
+        """
         for node in open_nodes:
             if (node.x == best.x and node.y == best.y):
                 open_nodes.remove(node)
                 break
-        open_coords.remove((best.x, best.y))
-        closed_coords.add((best.y, best.x))
-######################## DRAWING THE CURRENT STATE OF THINGS ##############################
         """
-        open_xs = [n.y for n in open_nodes]
+        open_coords.remove((best.x, best.y))
+        closed_coords.add((best.x, best.y))
+######################## DRAWING THE CURRENT STATE OF THINGS ##############################
+        
+        """open_xs = [n.y for n in open_nodes]
         open_ys = [n.x for n in open_nodes]
         best_xs = [best.y]
         best_ys = [best.x]
@@ -178,8 +184,8 @@ def astar(current_node, xf, yf):
         closed_scatter.set_data(closed_xs, closed_ys)
         steps += 1
         if steps % 500 == 0:
-            plt.pause(0.05)
-        """
+            plt.pause(0.05)"""
+        
 ###########################################################################################
 ######################## SET NEW CURRENT ##################################################
         current_node = best
@@ -196,11 +202,11 @@ closed_scatter.set_data([], []) # ditto
 plt.pause(0.001)
 coords = [] # the coords in the path will be stored as tuples in here
 while (target.parent != None): # this makes sure we go all the way back to the first node
-    coords.insert(0, (target.y, target.x)) # we add the coordinates to the list. For some reason I need to flip all the coords, not sure why
+    coords.insert(0, (target.x, target.y)) # we add the coordinates to the list. For some reason I need to flip all the coords, not sure why
     target = target.parent # and we move on to the next node
-coords.insert(0, (y, x)) # this adds the original node to the list
+coords.insert(0, (x, y)) # this adds the original node to the list
 #print(coords)
 ys, xs = zip(*coords) # unpacks the tuples so that we can draw the final path
-ax.plot(ys, xs, 'c', linewidth=2)
+ax.plot(xs, ys, 'c', linewidth=2)
 plt.ioff() # and this stuff draws it
 plt.show()
