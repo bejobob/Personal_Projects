@@ -19,10 +19,8 @@ TODO: fix x-y flip. This is caused by how 2d lists work. Just make it consistent
 from total_distance import total_cost
 from distance_left import distance_left
 import matplotlib.pyplot as plt
-import numpy as np
 
 open_nodes = []
-closed_nodes = []
 open_coords = set()
 closed_coords = set()
 xf = None
@@ -42,6 +40,11 @@ def load_map(path): # this function takes a file path and turns a .map into a us
 
     return grid
 
+def node_value(x, y, parent): # this function identifies the value of a node given the coordinates and the parent
+    cost_spent = total_cost(parent, x, y) # i use this function when creating a node, so I can't pass the node itself as the parameter
+    cost_left = distance_left(x, y, xf, yf) # which is why I have to use x, y, and parent instead of just node
+    return (cost_spent, cost_left)
+
 class Node(): # node structure
     def __init__(self, x, y, cost_spent, cost_left, parent=None):
         self.x = x # the x coord
@@ -50,12 +53,6 @@ class Node(): # node structure
         self.cost_left = cost_left
         self.value = cost_spent + cost_left
         self.parent = parent # the node we came from to get here
-
-class Entry():
-    def __init__(self, coords, node, nxt=None):
-        self.coords = coords
-        self.node = node
-        self.nxt = nxt
 
 DIRS = [(-1, -1), # left and down
         (-1, 0), # left
@@ -119,18 +116,10 @@ while(True):
 ###########################################################################################
 ######################## INITIALIZNG STARTING STUFFS ######################################
 current_node = Node(x, y, 0, distance_left(x, y, xf, yf))
-closed_nodes.append(current_node)
 coord_to_node[(x, y)] = current_node
 ###########################################################################################
-
-def node_value(x, y, parent): # this function identifies the value of a node given the coordinates and the parent
-    cost_spent = total_cost(parent, x, y) # i use this function when creating a node, so I can't pass the node itself as the parameter
-    cost_left = distance_left(x, y, xf, yf) # which is why I have to use x, y, and parent instead of just node
-    return (cost_spent, cost_left)
-
 ######################## MAIN FUNCTION ####################################################
 def astar(current_node, xf, yf):
-    steps = 0
     current_node = current_node
     while (True):
         for dx, dy in DIRS:
@@ -152,7 +141,6 @@ def astar(current_node, xf, yf):
             open_coords.add((nx, ny))
             if (new_node.value < coord_to_node[(x, y)].value):
                 coord_to_node[(x, y)] = new_node
-            #print(new_node.value)
 ###########################################################################################
 ######################## IDENTIFY BEST OPEN NODE ##########################################
         best = open_nodes[0]
@@ -162,17 +150,13 @@ def astar(current_node, xf, yf):
         open_nodes.remove(best)
 ###########################################################################################
 ######################## REMOVE NODE FROM OPEN LISTS ######################################
-        """
-        for node in open_nodes:
-            if (node.x == best.x and node.y == best.y):
-                open_nodes.remove(node)
-                break
-        """
         open_coords.remove((best.x, best.y))
         closed_coords.add((best.x, best.y))
 ######################## DRAWING THE CURRENT STATE OF THINGS ##############################
         
-        """open_xs = [n.y for n in open_nodes]
+        """
+        #UNCOMMENT IF YOU WANT TO SEE THE PATH BE EXPLORED IN REAL-TIME. BE AWARE THIS SLOWS THINS DOWN CONSIDERABLY.
+        open_xs = [n.y for n in open_nodes]
         open_ys = [n.x for n in open_nodes]
         best_xs = [best.y]
         best_ys = [best.x]
