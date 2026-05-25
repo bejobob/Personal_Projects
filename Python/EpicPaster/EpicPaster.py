@@ -8,7 +8,6 @@ if op == 1, return uppercase
 if op == 2, return lowercase
 if op == 3, return sentence case
 if op == 4, return original case without formatting
-If Return Original Case Without Formatting  
 """
 def epicPaster(op, copy):
     if copy:
