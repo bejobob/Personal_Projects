@@ -18,11 +18,17 @@ public class ndParticle extends physicalObject implements Printable, Renderable,
         System.out.println("Position: (" + x + ", " + y + ")\nRadius: " + radius + "\nMass: " + mass + "\nBounciness: " + bounciness + "\nTerminal Velocity: " + terminalVelocity);
     }
 
+
     public void render(ShapeRenderer shapeRenderer){
         shapeRenderer.circle(x, y, radius);
     }
 
     public float getRadius(){
         return radius;
+    }
+
+    public void setVelVec(float x, float y){
+        this.velVec.x = x;
+        this.velVec.y = y;
     }
 }

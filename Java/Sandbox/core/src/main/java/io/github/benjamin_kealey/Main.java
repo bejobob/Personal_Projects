@@ -109,8 +109,6 @@ public class Main extends ApplicationAdapter {
 
         Gdx.input.setInputProcessor(multiplexer);
 
-
-
         shownX_sidePanel = screenWidth - panelWidth;
         hiddenX_sidePanel = screenWidth;
 
