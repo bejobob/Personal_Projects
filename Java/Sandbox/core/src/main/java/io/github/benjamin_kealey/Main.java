@@ -1,48 +1,34 @@
 package io.github.benjamin_kealey;
 
+import com.badlogic.gdx.ApplicationAdapter;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+
+import com.kotcrab.vis.ui.VisUI;
+import com.kotcrab.vis.ui.widget.VisTextButton;
+
+import io.github.benjamin_kealey.EffectsObjects.*;
+import io.github.benjamin_kealey.Interfaces.*;
 import io.github.benjamin_kealey.PhysicalObjects.*;
 import io.github.benjamin_kealey.Utility.*;
-import io.github.benjamin_kealey.Interfaces.*;
 
-import java.nio.channels.CancelledKeyException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.ArrayList;
-import java.util.Collections;
-
-import org.javatuples.Pair;
-import org.javatuples.Tuple;
-
-import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.InputAdapter;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputProcessor;
-import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-
-import com.badlogic.gdx.InputMultiplexer;
-
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.TextField;
-import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
-import com.badlogic.gdx.utils.viewport.ScalingViewport;
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.kotcrab.vis.ui.VisUI;
-import com.kotcrab.vis.ui.widget.VisTextButton;
 
 //TODO: make side panel
 //TODO: different shaped particles
@@ -50,18 +36,19 @@ import com.kotcrab.vis.ui.widget.VisTextButton;
 
 public class Main extends ApplicationAdapter {
     private HashMap<Cell, Set<worldObject>> p_data = new HashMap<>(); // this is the grid. The keys are the coordinates and the values are the particles
-    private worldObject[] things = new worldObject[0];
-    OrthographicCamera camera;
-    Cell cell;
-    Vector3 worldPos = new Vector3();
-    ShapeRenderer p1s;
-    Stage stage;
-    InputAdapter clicky;
-    float mouseX;
-    World world;
-    boolean place = false;
+    private ArrayList<worldObject> things = new ArrayList<>(); // this contains all the objects in the world so that I don't lose reference to them when I clear the grid
+    private ArrayList<worldObject> thingsToAdd = new ArrayList<>();
+    OrthographicCamera camera; // camera
+    Cell cell; // this is a cell. I use it a few times. 
+    Vector3 worldPos = new Vector3(); // used to convert coordinates to the correct places
+    ShapeRenderer p1s; // thing.
+    Stage stage; // other thing.
+    InputAdapter clicky; // for when I make mouse presses
+    float mouseX; // the x coordinate of the cursor. Can't remember why I don't need a mouseY, but I don't!
+    World world; // this is the world that the simulation runs in. It just contains all the data about the world. I use it in some places.
+    boolean place = false; // for if I want to place a particle.
 
-    InputMultiplexer multiplexer = new InputMultiplexer();
+    InputMultiplexer multiplexer = new InputMultiplexer(); // to juggle with clicky and stage.
 
     // === SIDE PANEL STUFF === //
     private Table sidePanel;
@@ -75,7 +62,7 @@ public class Main extends ApplicationAdapter {
     private VisTextButton newParticleButton;
     private TextField.TextFieldFilter numberFilter = new TextField.TextFieldFilter() {
         @Override
-        public boolean acceptChar(TextField textField, char c) {
+        public boolean acceptChar(TextField textField, char c) { // makes sure only numbers are typed into number fields.
             if (textField.getText().contains(".") && c == '.') {
                 return false;
             }
@@ -91,33 +78,27 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void create() {
-        cell = new Cell(-1, -1);
+        cell = new Cell(-1, -1); // default value for the cell. this position doesn't actually exits.
         float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
-        //batch = new SpriteBatch();
-        //image = new Texture("libgdx.png");
+        float screenHeight = Gdx.graphics.getHeight(); // height and width of the screen.
+
         camera = new OrthographicCamera(screenWidth, screenHeight);
         camera.position.set(screenWidth/2f, screenHeight/2f, 0);
         camera.update();
         p1s = new ShapeRenderer();
-        world = new World(screenWidth, screenHeight, 9.81f);
+        world = new World(screenWidth, screenHeight, 9.81f, things, thingsToAdd);
 
         VisUI.load();
         stage = new Stage(new ScreenViewport());
         clicky = new InputAdapter() {
             @Override
             public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-                if (place) {
-                    worldPos = camera.unproject(new Vector3(screenX, screenY, 0));
-                    ndParticle p = createParticle(worldPos.x, worldPos.y);
-                    cell.set((int)Math.floor(p.x/CELL_SIZE), (int)Math.floor(p.y/CELL_SIZE));
-                    for (Cell t: adjacentCells(cell)){
-                        p_data.computeIfAbsent(new Cell(cell.getX()+t.getX(), cell.getY()+t.getY()), k -> new HashSet<>()).add(p);
-                    }
-                    //System.out.println(p_data.keySet());
-                    things = java.util.Arrays.copyOf(things, things.length + 1);
-                    things[things.length - 1] = p;
-                    place = false;
+                if (place) { // place determines if we want to place a particle when we click
+                    worldPos = camera.unproject(new Vector3(screenX, screenY, 0)); // readjust the coordinate system 
+                    ndParticle p = createParticle(worldPos.x, worldPos.y); // we create a particle
+                    addToCells(p);
+                    things.add(p); // we extend the list of everything and add the new thing to it
+                    place = false; // uncheck place
                 }
                 return false;
             }
@@ -174,72 +155,41 @@ public class Main extends ApplicationAdapter {
     public void render() {
         ScreenUtils.clear(0, 0, 0, 1);
         updatePanel();
-
-        stage.act(Gdx.graphics.getDeltaTime());
-        stage.draw();
         p1s.begin(ShapeRenderer.ShapeType.Filled);
-        p1s.setColor(1,1,0,1);
+        p1s.setColor(1,0,0,1);
         
             for (worldObject ob : things){
                 cell.set((int)Math.floor(ob.x/CELL_SIZE), (int)Math.floor(ob.y/CELL_SIZE));
-                //((ndParticle)ob).print();
-                if (ob instanceof Updateable){
-                    //System.out.println("test");
+                if (ob instanceof Updateable && (!expanded && !place)){
                     ((Updateable) ob).update(Gdx.graphics.getDeltaTime(), world);
                 }
-                if (ob instanceof Collidable){
-                    //System.out.println("test");
+                if (ob instanceof Collidable && (!expanded && !place)){
                     for (Cell adjCell: adjacentCells(cell)){
-                        //System.out.println(adjCell);
-                        //System.out.println(p_data.containsKey(adjCell));
+
                         p_data.getOrDefault(adjCell, Collections.emptySet()).forEach(other -> {
-                                //System.out.println(ob);
-                                //System.out.println(other);
-                                //System.out.println(other == ob);
-                                //System.out.println(other instanceof Collidable);
-                                if (other instanceof Collidable && other != ob && checkCollision((physicalObject) ob, (physicalObject) other)){
-                                    //System.out.println("test");
-                                    collision((physicalObject)ob, (physicalObject) other);
-                                }
+
+                            if (other instanceof Collidable && other != ob && checkCollision((physicalObject) ob, (physicalObject) other)){
+                                collision((physicalObject)ob, (physicalObject) other);
+                            }
                         });
                     }
                 }
                 if (ob instanceof Renderable){
                     ((Renderable) ob).render(p1s);
                 }
-                /*
-                if (!p.fixed) {
-                    p.x += (p.vel_vec.x) * Gdx.graphics.getDeltaTime();
-                    if (p.x + p.radius > Gdx.graphics.getWidth()) {
-                        p.x = Gdx.graphics.getWidth() - p.radius;
-                        p.vel_vec.x *= -p.bounciness;
-                    } else if (p.x - p.radius < 0) {
-                        p.x = p.radius;
-                        p.vel_vec.x *= -p.bounciness;
-                    }
-                    p.y += (p.vel_vec.y) * Gdx.graphics.getDeltaTime();
-                    if (p.y + p.radius > Gdx.graphics.getHeight()) {
-                        p.y = Gdx.graphics.getHeight() - p.radius;
-                        p.vel_vec.y *= -p.bounciness;
-                    } else if (p.y - p.radius < 0) {
-                        p.y = p.radius;
-                        p.vel_vec.y *= -p.bounciness;
-                    }
-                    p.vel_vec.x += (p.acc_vec.x) * Gdx.graphics.getDeltaTime();
-                    p.vel_vec.y += (p.acc_vec.y) * Gdx.graphics.getDeltaTime();
-                    if (p.vel_vec.y < -p.terminalVelocity) {
-                        p.vel_vec.y = (float)(-p.terminalVelocity);
-                    }
-                }*/
-            
         }
+        thingsToAdd.forEach(a -> {
+            things.add(a);
+        });
+        thingsToAdd.clear();
         p_data.clear();
         for (worldObject ob : things){
-            cell.set((int)Math.floor(ob.x/CELL_SIZE), (int)Math.floor(ob.y/CELL_SIZE));
-            p_data.computeIfAbsent(new Cell(cell.getX(), cell.getY()), k -> new HashSet<>()).add(ob);
-        }
-
+            if (ob instanceof physicalObject)
+                addToCells((physicalObject)ob);
+            }
         p1s.end();            
+        stage.act(Gdx.graphics.getDeltaTime());
+        stage.draw();
     }
     
     public void collision(physicalObject o1, physicalObject o2) {
@@ -291,12 +241,25 @@ public class Main extends ApplicationAdapter {
 
     public ArrayList<Cell> adjacentCells(Cell cell) {
         ArrayList<Cell> adjacent = new ArrayList<>();
+        
         for (int i = -1; i <= 1; i++){
             for (int j = -1; j <= 1; j++){
                 adjacent.add(new Cell((int)cell.getX() + i, (int)cell.getY() + j));
             }
         }
         return adjacent;
+    }
+
+    public void addToCells(physicalObject p){
+        int left   = (int)Math.floor((p.x - p.radius) / CELL_SIZE);
+        int right  = (int)Math.floor((p.x + p.radius) / CELL_SIZE);
+        int bottom = (int)Math.floor((p.y - p.radius) / CELL_SIZE);
+        int top    = (int)Math.floor((p.y + p.radius) / CELL_SIZE);
+        for (int cx = left; cx <= right; cx++) {
+            for (int cy = bottom; cy <= top; cy++) {  // we iterate over every adjacent cell to the center cell
+                p_data.computeIfAbsent(new Cell(cx, cy), k -> new HashSet<>()).add(p);
+            }   
+        }
     }
 
     public void updatePanel() {
