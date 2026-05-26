@@ -1,14 +1,14 @@
 package io.github.benjamin_kealey.EffectsObjects;
 
 import java.lang.Math;
-import com.badlogic.gdx.Gdx;
 
 import io.github.benjamin_kealey.worldObject;
 import io.github.benjamin_kealey.PhysicalObjects.*;
+import io.github.benjamin_kealey.Interfaces.*;
 import io.github.benjamin_kealey.Utility.World;
 
-public class particleEmitter extends worldObject{
-    public double duration;
+public class particleEmitter extends worldObject implements Updateable{
+    public float duration, sinceLast, elapsed;
     public int pps; // particles per second
     public float x, y, maxSpeed, minSpeed, maxMass, minMass, maxRadius, minRadius, maxBounciness, minBounciness, maxTermVel, minTermVel;
 
@@ -28,10 +28,15 @@ public class particleEmitter extends worldObject{
         this.minBounciness = minBounciness;
         this.maxTermVel = maxTermVel;
         this.minTermVel = minTermVel;
+        this.sinceLast = 0;
+        this.elapsed = 0;
     }
 
     public ndParticle createParticle() {
-        return new ndParticle(
+        float speed = minSpeed + (float)(Math.random()*(maxSpeed - minSpeed + 1));
+        float speedX = minSpeed + (float)(Math.random()*(speed - minSpeed + 1));
+        float speedY = (float)Math.sqrt(speed*speed - speedX*speedX);
+        ndParticle p = new ndParticle(
             x, y,
             (float)(Math.random() * (maxRadius - minRadius) + minRadius),
             false,
@@ -39,26 +44,22 @@ public class particleEmitter extends worldObject{
             (float)(Math.random() * (maxBounciness - minBounciness) + minBounciness),
             (float)(Math.random() * (maxTermVel - minTermVel) + minTermVel)
         );
+        p.setVelVec(speedX, speedY);
+        return(p);
     }
 
-    public void emit() {
+    public void update(float delta, World world) {
         double interval = 1.0/pps;
-        double sinceLast = 0;
-        double elapsed = 0;
-        while (elapsed < duration) {
-            sinceLast += Gdx.graphics.getDeltaTime();
-            elapsed += Gdx.graphics.getDeltaTime();
+        if (elapsed < duration) {
+            sinceLast += delta;
+            elapsed += delta;
             if (sinceLast >= interval) {
-                createParticle();
+                world.toAdd.add(createParticle());
                 sinceLast = 0;
             }
             if (elapsed >= duration){
                 return;
             }
         }
-    }
-
-    public void update(float delta, World world) {
-        emit();
     }
 }
