@@ -45,6 +45,7 @@ public class particleEmitter extends worldObject implements Updateable{
             (float)(Math.random() * (maxTermVel - minTermVel) + minTermVel)
         );
         p.setVelVec(speedX, speedY);
+        p.velVec.rotateDeg((float)(Math.random()*361));
         return(p);
     }
 
