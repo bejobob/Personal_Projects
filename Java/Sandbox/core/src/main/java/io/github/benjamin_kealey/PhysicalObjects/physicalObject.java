@@ -1,13 +1,13 @@
 package io.github.benjamin_kealey.PhysicalObjects;
 
 import io.github.benjamin_kealey.worldObject;
-import io.github.benjamin_kealey.Interfaces.Renderable;
+import io.github.benjamin_kealey.Interfaces.*;
 import io.github.benjamin_kealey.Utility.*;
 
 import com.badlogic.gdx.math.Vector2;
 
 public class physicalObject extends worldObject implements Renderable{
-    public float mass, invMass, radius, bounciness, angle, angularVelocity, torque, inertia, invInertia, height, width;
+    public float mass, invMass, radius, bounciness, angle, angularVelocity, torque, inertia, invInertia, height, width, terminalVelocity;
     public Vector2 forceVec;
     public Vector2 accVec;
     public Vector2 velVec;
@@ -35,44 +35,11 @@ public class physicalObject extends worldObject implements Renderable{
         //System.out.println("pysicalObject: (" + x + ", " + y + ")");
     }
     /**
-     * 
      * @param delta the time since the last frame
      * @param world the world. Contains more information than needed but we only use what we need
      * @param r // the collision normal. Vector from COM to contact point
      */
-    public void update(float delta, World world){ 
-        if (!fixed){
-
-            accVec.x = forceVec.x / (float) mass;
-            accVec.y = forceVec.y / (float) mass;
-            velVec.x += accVec.x * delta;
-            velVec.y += accVec.y * delta;
-
-            x += velVec.x * delta;
-            if (x + radius > world.worldWidth){
-                x = world.worldWidth - radius;
-                velVec.x *= -bounciness;
-            } else if (x - radius < 0){
-                x = radius;
-                velVec.x *= -bounciness;
-            }
-            
-            y += velVec.y * delta;
-            if (y + radius > world.worldHeight){
-                y = world.worldHeight - radius;
-                velVec.y *= -bounciness;
-            } else if (y - radius < 0){
-                y = radius;
-                velVec.y *= -bounciness;
-            }
-
-            float angAccVec = torque/inertia;
-            angularVelocity += angAccVec * delta;
-            angle += angularVelocity * delta;
-
-            //torque = r.
-        }
-    }
+    
 
     public void render(com.badlogic.gdx.graphics.glutils.ShapeRenderer shapeRenderer){
         switch (shape) {

@@ -31,17 +31,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
-//TODO: make side panel
-//TODO: different shaped particles
-//TODO: spinning/rotating/rolling
+//TODO: figure out how to push back rectangles to always stay within world boundaries
+
 
 public class Main extends ApplicationAdapter {
     private HashMap<Cell, Set<worldObject>> p_data = new HashMap<>(); // this is the grid. The keys are the coordinates and the values are the particles
     private ArrayList<worldObject> things = new ArrayList<>(); // this contains all the objects in the world so that I don't lose reference to them when I clear the grid
     private ArrayList<worldObject> thingsToAdd = new ArrayList<>();
     private ArrayList<Pair<physicalObject, physicalObject>> collisionCache = new ArrayList<>();
+    Map<String, Factory> factories = new HashMap<>();
     OrthographicCamera camera; // camera
     Cell cell; // this is a cell. I use it a few times. 
     Vector3 worldPos = new Vector3(); // used to convert coordinates to the correct places
@@ -83,6 +84,10 @@ public class Main extends ApplicationAdapter {
 
     @Override
     public void create() {
+
+        factories.put("ndParticle", (x, y) -> new ndParticle(x, y, 25f, false, 100f, 0.9f, 999f));
+        factories.put("squareParticle", (x, y) -> new squareParticle(x, y, false, 100f, 0.9f, 999f, 45f, 30f, 50f));
+
         cell = new Cell(-1, -1); // default value for the cell. this position doesn't actually exits.
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight(); // height and width of the screen.
@@ -176,34 +181,32 @@ public class Main extends ApplicationAdapter {
         p1s.setColor(1,0,0,1);
         //p1s.rect(100, 100, 50, 50, 50, 50, 1, 1, 45);
 
-            for (worldObject ob : things){
-                cell.set((int)Math.floor(ob.x/CELL_SIZE), (int)Math.floor(ob.y/CELL_SIZE));
-                if (ob instanceof Updateable u && (!expanded && !place)){
-                    u.update(Gdx.graphics.getDeltaTime(), world);
-                }
-                if (ob instanceof Collidable && (!expanded && !place)){
-                    for (Cell adjCell: adjacentCells(cell)){
+        for (worldObject ob : things){
+            cell.set((int)Math.floor(ob.x/CELL_SIZE), (int)Math.floor(ob.y/CELL_SIZE));
+            if (ob instanceof Updateable u && (!expanded && !place)){
+                u.update(Gdx.graphics.getDeltaTime(), world);
+            }
+            if (ob instanceof Collidable && (!expanded && !place)){
+                for (Cell adjCell: adjacentCells(cell)){
 
-                        p_data.getOrDefault(adjCell, Collections.emptySet()).forEach(other -> {
-                            if (collisionCache.contains(new Pair<>(ob, other)) || collisionCache.contains(new Pair<>(other, ob))){
-                                return;
-                            }
+                    p_data.getOrDefault(adjCell, Collections.emptySet()).forEach(other -> {
+                        if (collisionCache.contains(new Pair<>(ob, other)) || collisionCache.contains(new Pair<>(other, ob))) return;
 
-                            if (other instanceof Collidable && other != ob && checkCollision((physicalObject) ob, (physicalObject) other)){
-                                collision((physicalObject)ob, (physicalObject) other);
-                                collisionCache.add(new Pair<>((physicalObject) ob, (physicalObject) other));
-                            }
-                        });
-                    }
+                        if (other instanceof Collidable && other != ob && checkCollision((physicalObject) ob, (physicalObject) other)){
+                            collision((physicalObject)ob, (physicalObject) other);
+                            collisionCache.add(new Pair<>((physicalObject)ob, (physicalObject)other));
+                        }
+                    });
                 }
-                if (ob instanceof Renderable r){
-                    r.render(p1s);
-                    
-                }
-                if (ob instanceof Printable pr){
-                    pr.print();
-                }
-        }
+            }
+            if (ob instanceof Renderable r){
+                r.render(p1s);
+                
+            }
+            //if (ob instanceof Printable pr){
+                //pr.print();
+            //}
+    }
         thingsToAdd.forEach(a -> {
             things.add(a);
         });
@@ -223,14 +226,15 @@ public class Main extends ApplicationAdapter {
         Vector2 relativeVelocity = new Vector2(o2.velVec.x - o1.velVec.x, o2.velVec.y - o1.velVec.y);
         float e = (float) Math.min(o1.bounciness, o2.bounciness);
         Vector2 collision_normal = new Vector2((float)(o2.x - o1.x), (float)(o2.y - o1.y)).nor();
-        Vector2 collision_tangent = new Vector2(-collision_normal.y, collision_normal.x);
+        //Vector2 collision_tangent = new Vector2(-collision_normal.y, collision_normal.x);
+
+        separate(o1, o2, collision_normal);
         if (relativeVelocity.dot(collision_normal) >= 0) {
             return;
         }
-        separate(o1, o2, collision_normal);
 
-        float impulse = (-(1+e)*(relativeVelocity.dot(collision_tangent)))/o1.invMass+o2.invMass;
-        Vector2 impulseVector = collision_normal.scl(impulse);
+        //float impulse = (-(1+e)*(relativeVelocity.dot(collision_normal)))/(o1.invMass+o2.invMass);
+        //Vector2 impulseVector = collision_normal.cpy().scl(impulse);
         Vector2 contactPoint = contactPoint(o1, o2); 
 
         Vector2 center1ToCP = contactPoint.cpy().sub(o1.getPosition()); // from the center of o1 to the CP
@@ -257,33 +261,75 @@ public class Main extends ApplicationAdapter {
         float angularImpulse2 = center2ToCP.crs(collisionImpulse); // the angular impulse for o2
         o2.angularVelocity += angularImpulse2 * o2.invInertia; // update o2's angular velocity based on the angular impulse
 
-        o1.velVec.sub(impulseVector.cpy().scl(o1.invMass));
-        o2.velVec.add(impulseVector.cpy().scl(o2.invMass));        
+        //o1.velVec.sub(impulseVector.cpy().scl(o1.invMass));
+        //o2.velVec.add(impulseVector.cpy().scl(o2.invMass));        
     }
 
     public boolean checkCollision(physicalObject o1, physicalObject o2) {
-        float distance = (float)Math.sqrt((o1.x - o2.x) * (o1.x - o2.x) + (o1.y - o2.y) * (o1.y - o2.y));
-        //System.out.println(distance < (o1.radius + o2.radius));
-        return distance < (o1.radius + o2.radius);
+        if (o1 instanceof Circular && o2 instanceof Circular){
+            float distance = (float)Math.sqrt((o1.x - o2.x) * (o1.x - o2.x) + (o1.y - o2.y) * (o1.y - o2.y));
+            //System.out.println(distance < (o1.radius + o2.radius));
+            return distance < (o1.radius + o2.radius);
+        }
+        if (o1 instanceof Rectangular && o2 instanceof Rectangular){
+            boolean collided = SAT.hasCollided(((squareParticle)o1).corners(), ((squareParticle)o2).corners(), null);
+            return collided;
+        }
+        if ((o1 instanceof Circular && o2 instanceof Rectangular) || (o1 instanceof Rectangular && o2 instanceof Circular)){
+            ndParticle circle = o1 instanceof Circular ? (ndParticle)o1:(ndParticle)o2;
+            squareParticle rect = o1 instanceof Rectangular ? (squareParticle)o1:(squareParticle)o2;
+
+            float dx = circle.x - rect.x;
+            float dy = circle.y - rect.y;
+
+            float cos = (float) Math.cos(-rect.angle);
+            float sin = (float) Math.sin(-rect.angle);
+
+            float localX = dx * cos - dy * sin;
+            float localY = dx * sin + dy * cos;
+
+            float hw = rect.width / 2;
+            float hh = rect.height / 2; // half-width and half-height of rectangle
+
+            float closestX = Math.max(-hw, Math.min(circle.x, hw));
+            float closestY = Math.max(-hh, Math.min(circle.y, hh));
+
+            float dx2 = localX - closestX;
+            float dy2 = localY - closestY;
+
+            return dx2 * dx2 + dy2 * dy2 <= circle.radius * circle.radius;
+
+        }
+
+        return false;
     }
 
     public Vector2 contactPoint(physicalObject o1, physicalObject o2){
-        if (o1.shape == "Circle" && o2.shape == "Circle"){
+        if (o1.shape.equals("circular") && o2.shape.equals("circular")){
             Vector2 c1 = new Vector2(o1.x, o1.y);
             Vector2 c2 = new Vector2(o2.x, o2.y);
             Vector2 contact_normal = (c2.cpy().sub(c1)).nor();
             Vector2 contact_point = c1.cpy().add(contact_normal.cpy().scl(o1.radius));
             return contact_point;
         }
-        if ((o1 instanceof Circular && o2 instanceof Rectangular r)){
-            float closestX = Math.max(r.minX(), Math.min(o1.x, r.maxX()));
-            float closestY = Math.max(r.minY(), Math.min(o1.x, r.maxY()));
-            return new Vector2(closestX, closestY);
-        } else if (o1 instanceof Rectangular r && o2 instanceof Circular){
-            float closestX = Math.max(r.minX(), Math.min(o2.x, r.maxX()));
-            float closestY = Math.max(r.minY(), Math.min(o2.x, r.maxY()));
-            return new Vector2(closestX, closestY);
-        }
+        if (((o1 instanceof Circular && o2 instanceof Rectangular)||(o1 instanceof Rectangular && o2 instanceof Circular))){
+            ndParticle circle = o1 instanceof Circular ? (ndParticle)o1:(ndParticle)o2;
+            squareParticle rect = o1 instanceof Rectangular ? (squareParticle)o1:(squareParticle)o2;
+
+            float cos = (float) Math.cos(-rect.angle);
+            float sin = (float) Math.sin(-rect.angle);
+
+            float hw = rect.width / 2;
+            float hh = rect.height / 2; // half-width and half-height of rectangle
+
+            float closestX = Math.max(-hw, Math.min(circle.x, hw));
+            float closestY = Math.max(-hh, Math.min(circle.y, hh));
+
+            float worldX = rect.x + closestX * cos - closestY * sin;
+            float worldY = rect.y + closestX * sin + closestY * cos;
+
+            return new Vector2(worldX, worldY);
+        } 
         return new Vector2(0,0);
     }
 
@@ -350,17 +396,7 @@ public class Main extends ApplicationAdapter {
     }
 
     public physicalObject createParticle(float x, float y) {
-        return new physicalObject(x, y,
-            radiusField.getText().isEmpty() ? 25f : Float.parseFloat(radiusField.getText()),
-            massField.getText().isEmpty() ? 100f : Float.parseFloat(massField.getText()),
-            bouncinessField.getText().isEmpty() ? 0.9f : Float.parseFloat(bouncinessField.getText()),
-            false,
-            25f,
-            25f,
-            dropDown.getSelected() == "ndParticle" ? "circular" : "rectangular",
-            0f,
-            0f
-        );
+        return factories.get(dropDown.getSelected()).create(x, y);
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 
 import io.github.benjamin_kealey.Interfaces.*;
+import io.github.benjamin_kealey.Utility.World;
 
 /**
  * @author Benjamin Kealey
@@ -27,20 +28,21 @@ public class squareParticle extends physicalObject implements Printable, Updatea
 
     public Vector2[] corners(){
         Vector2[] cornerCords = new Vector2[4];
-        cornerCords[0] = new Vector2((float)(x+width/2), (float)(y+height/2)); // top left
-        cornerCords[1] = new Vector2((float)(x-width/2), (float)(y+height/2)); // top right
-        cornerCords[2] = new Vector2((float)(x-width/2), (float)(y-height/2)); // bottom right
-        cornerCords[3] = new Vector2((float)(x+width/2), (float)(y-height/2)); // bottom left
+        cornerCords[0] = new Vector2((float)(x+width/2), (float)(y+height/2)); // top right
+        cornerCords[1] = new Vector2((float)(x-width/2), (float)(y+height/2)); // top left
+        cornerCords[2] = new Vector2((float)(x-width/2), (float)(y-height/2)); // bottom left
+        cornerCords[3] = new Vector2((float)(x+width/2), (float)(y-height/2)); // bottom right
         
         float cos = (float) Math.cos(angle);
         float sin = (float) Math.sin(angle);
         
         for (int i = 0; i < cornerCords.length; i++) {
-            cornerCords[i] = new Vector2(
-                cornerCords[i].x * cos - cornerCords[i].y * sin,
-                cornerCords[i].x * sin + cornerCords[i].y * cos
-            );
-        }
+            float px = cornerCords[i].x - x;
+            float py = cornerCords[i].y - y;
+
+            cornerCords[i].x = x + (px * cos - py * sin);
+            cornerCords[i].y = y + (px * sin + py * cos);
+    }
         return cornerCords;
     }
 
@@ -87,5 +89,39 @@ public class squareParticle extends physicalObject implements Printable, Updatea
     public void print(){
         System.out.println("Position: (" + x + ", " + y + ")\nHeight: " + height + "\nWidth: " + width + "\nMass: " + mass + "\nBounciness: " + bounciness + "\nTerminal Velocity: " + terminalVelocity);
 
+    }
+
+    public void update(float delta, World world){ 
+        if (!fixed){
+
+            accVec.x = forceVec.x / (float) mass;
+            accVec.y = forceVec.y / (float) mass;
+            velVec.x += accVec.x * delta;
+            velVec.y += accVec.y * delta;
+
+            x += velVec.x * delta;
+            if (maxX() > world.worldWidth){
+                x -= (maxX() - world.worldWidth);
+                velVec.x *= -bounciness;
+            } else if (minX() < 0){
+                x -= minX();
+                velVec.x *= -bounciness;
+            }
+            
+            y += velVec.y * delta;
+            if (maxY() > world.worldHeight){
+                y -= (maxY() - world.worldHeight);
+                velVec.y *= -bounciness;
+            } else if (minY() < 0){
+                y -= minY();
+                velVec.y *= -bounciness;
+            }
+
+            float angAccVec = torque/inertia;
+            angularVelocity += angAccVec * delta;
+            angle += angularVelocity * delta;
+
+            //torque = r x F
+        }
     }
 }
