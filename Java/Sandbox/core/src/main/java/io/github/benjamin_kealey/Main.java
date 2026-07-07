@@ -262,7 +262,10 @@ public class Main extends ApplicationAdapter {
         o2.angularVelocity += angularImpulse2 * o2.invInertia; // update o2's angular velocity based on the angular impulse
 
         //o1.velVec.sub(impulseVector.cpy().scl(o1.invMass));
-        //o2.velVec.add(impulseVector.cpy().scl(o2.invMass));        
+        //o2.velVec.add(impulseVector.cpy().scl(o2.invMass));
+        System.out.println("CP = " + contactPoint);
+        System.out.println("r = " + contactPoint.cpy().sub((o2 instanceof squareParticle ? (squareParticle)o2 : (squareParticle)o1).getPosition()));
+        System.out.println("Impulse = " + collisionImpulse);
     }
 
     public boolean checkCollision(physicalObject o1, physicalObject o2) {
@@ -313,6 +316,7 @@ public class Main extends ApplicationAdapter {
             return contact_point;
         }
         if (((o1 instanceof Circular && o2 instanceof Rectangular)||(o1 instanceof Rectangular && o2 instanceof Circular))){
+            System.out.println("test");
             ndParticle circle = o1 instanceof Circular ? (ndParticle)o1:(ndParticle)o2;
             squareParticle rect = o1 instanceof Rectangular ? (squareParticle)o1:(squareParticle)o2;
 
@@ -327,6 +331,10 @@ public class Main extends ApplicationAdapter {
 
             float worldX = rect.x + closestX * cos - closestY * sin;
             float worldY = rect.y + closestX * sin + closestY * cos;
+
+            System.out.println("Center = " + rect.getPosition());
+            System.out.println("Angular Velocity = " + rect.angularVelocity);
+
 
             return new Vector2(worldX, worldY);
         } 

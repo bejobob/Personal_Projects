@@ -27,7 +27,7 @@ public class physicalObject extends worldObject implements Renderable{
         this.torque = 0;
         this.inertia = inertia;
         this.invInertia = 1/inertia;
-        this.forceVec = new Vector2(0, fixed? 0 : (float)(-9.81*mass*100));
+        this.forceVec = new Vector2(0, fixed? 0 : (float)(-0.5*mass*100));
         this.accVec = new Vector2(this.forceVec.x / (float) mass, this.forceVec.y / (float) mass);
         this.velVec = new Vector2(0, 0);
         this.fixed = fixed;
